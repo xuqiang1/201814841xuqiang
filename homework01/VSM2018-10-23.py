@@ -8,7 +8,7 @@ Created on Mon Oct 22 22:13:55 2018
 import os 
 import string
 import numpy
-import random
+#import random
 
 from tkinter import _flatten             #拉平二维列表
 from textblob import TextBlob            #切分
@@ -16,6 +16,7 @@ from nltk.stem import SnowballStemmer    #词干提取
 from nltk.stem import WordNetLemmatizer  #词型还原
 from nltk.corpus import stopwords        #停用词处理
 from collections import Counter          #统计词频
+from sklearn.model_selection import train_test_split   #划分train和test
 
 #import json
 #import chardet as ch #查看文件编码模块
@@ -23,24 +24,29 @@ from collections import Counter          #统计词频
 
 ######################################读入文本###################################
 #批量打开文件，将每个文件写入列表
-'''def getpath(mainpath):
+def getpath(mainpath):
     fp_list=[]
-    
+    lablelist=[]  # 用于生成label
+    lable_class=0
    
     os.chdir(mainpath)
     fd_name=os.listdir()
-    for each in fd_name:    
+    
+    for each in fd_name:  
+        lable_class+=1
         fd_path=mainpath+'\\'+each
         f_name=os.listdir(fd_path)
         for each in f_name:
             f_path=fd_path+'\\'+each
             fp_list.append(f_path)
+            lablelist.append(lable_class)
    # print(fp_list[10])  #检查文件路径
-    return fp_list
+    return fp_list,lablelist
            
-def readfile(filepathlist):
+def readfile(fp_list):
     filelist=[]
-    for each in filepathlist:
+
+    for each in fp_list:
         f=open(each,"rb")
         f_read = f.read()
         #f_ch = ch.detect(f_read)  # 存储文档编码格式
@@ -50,8 +56,8 @@ def readfile(filepathlist):
         f.close()
     #print (filelist[0]) #查看文件
     return filelist#生成以每篇文章为元素的大列表，下面函数所用doc为其中一篇文档
-'''
-def mark(mainpath):
+
+'''def mark(mainpath):
     fdict_mark={}
     fp_list=[]
     os.chdir(mainpath)
@@ -67,7 +73,7 @@ def mark(mainpath):
         
        
        
-    '''print("***********测试mark**********")
+    print("***********测试mark**********")
     l=list(fdict_mark.keys())
     ll=list(fdict_mark.values())
     num1=len(l)
@@ -76,7 +82,7 @@ def mark(mainpath):
     print(ll[0])
     print(num1,num2)
     
-    print("***********测试mark**********")'''
+    print("***********测试mark**********")
     return fdict_mark#返回为词典，词典的key是每个子文件夹的名字即分类，Value是该文件夹下文件绝对路径的列表
 
 def randompick(fdict_mark,rate):
@@ -131,7 +137,7 @@ def readfile(dict_mark):
 
     #print (filelist[0]) #查看文件
     return filelist#生成以每篇文章为元素的大列表，下面函数所用doc为其中一篇文档    
-    
+''' 
     
 
            
@@ -261,14 +267,14 @@ def IDF(nor_wordlist,frequencydict):#生成IDF
     vector = numpy.array(list(doc_count.values()))
    
     IDF_vector = numpy.log((N+1)/(vector+1)+1)
-\    IDF_vector = numpy.nan_to_num(IDF_vector)
+    IDF_vector = numpy.nan_to_num(IDF_vector)
     IDF_vector.tofile(r"C:\Users\311\Desktop\data mining\201814841xuqiang\homework01\output\IDF.txt")
     return IDF_vector
 #####################################生成VSM####################################
 
 def VSM(nor_wordlist,frequencydict):#生成向量空间模型
     TF_vectorlist = []
-    VSM = []
+    VSMlist = []
 
     IDF_vector = IDF(nor_wordlist,frequencydict)
 
@@ -278,52 +284,99 @@ def VSM(nor_wordlist,frequencydict):#生成向量空间模型
         VSM_vector = TF_vector*IDF_vector
         #print(IDF_vector,TF_vector,VSM_vector)
         #print(VSM)
-        VSM.append(VSM_vector)
+        VSMlist.append(VSM_vector)
 
     #保存所有文档的TF
     TF_array = numpy.array(TF_vectorlist)
     print("the TF_array is ",TF_array.shape)
     TF_array.tofile(r"C:\Users\311\Desktop\data mining\201814841xuqiang\homework01\output\TF.txt")
     #保存所有文档的向量列表
-    VSM_array = numpy.array(VSM)
+    VSM_array = numpy.array(VSMlist)
     print('the VSM_array is ',VSM_array.shape)
     VSM_array.tofile(r"C:\Users\311\Desktop\data mining\201814841xuqiang\homework01\output\VSM.txt")
 
-    return VSM_array
+    return VSMlist
 
     
 #####################################KNN####################################           
-   
+def cos(X_train, X_test):#计算cos值
+    testdoc_cos=[]
+    test_cos=[]
     
+    for row in X_test:
+        vector_test = numpy.mat(row)
+        for row in X_train:
+            vector_train = numpy.mat(row)
+            num = float(vector_test*vector_train.T)
+            denom = numpy.linalg.norm(vector_test) * numpy.linalg.norm(vector_train)
+            doc_cos = num / denom
+        testdoc_cos.append(doc_cos)
+    test_cos.append(testdoc_cos)
+    
+    
+    return test_cos#返回一个二维的列表，每一行表示test中一篇doc和train中各篇doc的cos值
 
 
+def KNN(VSMlist,lablelist,k):
+    klist=[]
+    kl=[]
+    cl=[]
+    test_list=[]
+    
+    
+    X_train, X_test, Y_train, Y_test=train_test_split(VSMlist, lablelist, test_size=0.2, random_state=42)
+    X_train=numpy.array(X_train)
+    X_test=numpy.array(X_test)
+    test_cos=cos(X_train, X_test)
+    
+    for each in test_cos:
+        for i in range(k):
+            p=each.index(max(each))
+            kl.append(p)
+            each.pop(p)
+    klist.append(kl)
+    
+    for each in klist:
+        for k in each:
+            cl.append(Y_train[k])
+        tcdict=dict(Counter(cl).most_common(1))
+        test_list.append(tcdict.keys())
 
+    print(test_list)
+    print(len(test_list))
+    print('**********测试**********')
+    print(Y_test)
+    print(len(Y_test))
+    return test_list,Y_test
 
-
-
-
-
-
-
-
-
-
-       
+def computeacc(test_list,Y_test):
+    i=0
+    n=len(test_list)
+    acc=0
+    for each in test_list:
+        for c in Y_test:
+           if each==c:
+               i+=1
+    acc=i/n
+    print('The KNN result is %f'%acc )   
+    
+#####################################main#################################### 
+   
 
 mainpath="C:\\Users\\311\\Desktop\\data mining\\20news-18828" 
-fdict_mark=mark(mainpath)
-tuplel_random=randompick(fdict_mark,0.8)
-practicedict_mark=tuplel_random[0]
-testdict_mark=tuplel_random[1]
-filelist=readfile(practicedict_mark)
+fp_list=getpath(mainpath)[0]
+lablelist=getpath(mainpath)[1]
 
+filelist=readfile(fp_list)
 nor_wordlist=preprocess(filelist)
 frequencydict=wordfrequency(nor_wordlist,16,1500) 
 c=len(frequencydict)
-print(frequencydict)
-print("词典数量")
-print(c)
-VSM(nor_wordlist,frequencydict)
-
+print("词典数量%d"%c)
+VSMlist=VSM(nor_wordlist,frequencydict)
+k=3
+knn=KNN(VSMlist,lablelist,k)
+test_list=knn[0]
+Y_test=knn[1]
+computeacc(test_list,Y_test)
        
    
