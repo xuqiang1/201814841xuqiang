@@ -55,6 +55,8 @@ def readfile(fp_list):
         filelist.append(f_read_decode)
         f.close()
     #print (filelist[0]) #查看文件
+    print('读取的文档数为%d'%len( filelist))
+    print("***************************文件读取完成*****************************")
     return filelist#生成以每篇文章为元素的大列表，下面函数所用doc为其中一篇文档
 
 '''def mark(mainpath):
@@ -224,7 +226,11 @@ def wordfrequency(nor_wordlist,low,high): #计算文档词频并删除高频和�
             record.append(key)
     for key in record:    
         frequencydict.pop(key)
-
+        
+        
+    c=len(frequencydict)
+    print("生成的词典数量为%d"%c)
+    print("***************************词典生成完毕*****************************")
     return (frequencydict)
 
 #####################################计算TF和IDF#################################
@@ -245,10 +251,10 @@ def TF(nor_doc_wordlist, frequencydict):#计算一篇文档的词频
           ###  print("doc_count[%s]: "%key ,doc_count[key])
 
     vector = numpy.array(list(doc_count.values()))
-    #arlfa = 0.1
-    #max_element = vector.max()
-    #TF_vector = arlfa + (1-arlfa)*vector/max_element
-    TF_vector = 1+numpy.log(vector)
+    arlfa = 0.1
+    max_element = vector.max()
+    TF_vector = arlfa + (1-arlfa)*vector/max_element
+    #TF_vector = 1+numpy.log(vector)
     TF_vector = numpy.nan_to_num(TF_vector)
     
     return TF_vector 
@@ -263,12 +269,16 @@ def IDF(nor_wordlist,frequencydict):#生成IDF
         for nor_doc_wordlist in nor_wordlist:
             if key in nor_doc_wordlist:
                 count+=1
-        doc_count[key]=c
+        doc_count.setdefault(key,count)
+    
     vector = numpy.array(list(doc_count.values()))
    
-    IDF_vector = numpy.log((N+1)/(vector+1)+1)
+    IDF_vector = numpy.log((N+1)/(vector+1))+1
     IDF_vector = numpy.nan_to_num(IDF_vector)
-    IDF_vector.tofile(r"C:\Users\311\Desktop\data mining\201814841xuqiang\homework01\output\IDF.txt")
+    print("the IDF_array is ",IDF_vector.shape)
+    print(IDF_vector)
+    #IDF_vector.tofile(r"C:\Users\311\Desktop\data mining\201814841xuqiang\homework01\output\IDF.txt")
+    
     return IDF_vector
 #####################################生成VSM####################################
 
@@ -289,29 +299,43 @@ def VSM(nor_wordlist,frequencydict):#生成向量空间模型
     #保存所有文档的TF
     TF_array = numpy.array(TF_vectorlist)
     print("the TF_array is ",TF_array.shape)
-    TF_array.tofile(r"C:\Users\311\Desktop\data mining\201814841xuqiang\homework01\output\TF.txt")
+    print(TF_array)
+    #TF_array.tofile(r"C:\Users\311\Desktop\data mining\201814841xuqiang\homework01\output\TF.txt")
     #保存所有文档的向量列表
     VSM_array = numpy.array(VSMlist)
     print('the VSM_array is ',VSM_array.shape)
-    VSM_array.tofile(r"C:\Users\311\Desktop\data mining\201814841xuqiang\homework01\output\VSM.txt")
-
+    print(VSM_array)
+    #VSM_array.tofile(r"C:\Users\311\Desktop\data mining\201814841xuqiang\homework01\output\VSM.txt")
+    print("***************************生成VSM*****************************")
     return VSMlist
 
     
 #####################################KNN####################################           
-def cos(X_train, X_test):#计算cos值
+def cos(X_train, X_test):#计算cos值????????
     testdoc_cos=[]
     test_cos=[]
+    len_test=0.0
+    len_train=0.0
+    num=0.0
     
-    for row in X_test:
-        vector_test = numpy.mat(row)
-        for row in X_train:
-            vector_train = numpy.mat(row)
-            num = float(vector_test*vector_train.T)
-            denom = numpy.linalg.norm(vector_test) * numpy.linalg.norm(vector_train)
-            doc_cos = num / denom
-        testdoc_cos.append(doc_cos)
-    test_cos.append(testdoc_cos)
+    for vector_test in X_test[0]:
+        for i in vector_test:
+            len_test+=i**2
+        #print('len_test是%f'%len_test)
+        for vector_train in X_train:
+            for j in vector_train:
+                len_train+=j**2
+        #print('len_train是%f'%len_train)                
+            num=numpy.dot(vector_test, vector_train)
+            if len_test !=0 and len_train !=0:
+                cos=num/((len_test*len_train)**0.5)
+            else:
+                cos=0
+            testdoc_cos.append(cos)
+        test_cos.append(testdoc_cos)
+        testdoc_cos=[]
+    for each in test_cos:
+        print(each.index(max(each)))
     
     
     return test_cos#返回一个二维的列表，每一行表示test中一篇doc和train中各篇doc的cos值
@@ -321,13 +345,20 @@ def KNN(VSMlist,lablelist,k):
     klist=[]
     kl=[]
     cl=[]
+    t_list=[]
     test_list=[]
     
     
     X_train, X_test, Y_train, Y_test=train_test_split(VSMlist, lablelist, test_size=0.2, random_state=42)
+    print('X_train文档数是%d'%len(X_train))
+    print('X_test文档数是%d'%len(X_test))
     X_train=numpy.array(X_train)
     X_test=numpy.array(X_test)
     test_cos=cos(X_train, X_test)
+    
+    
+    test_cos_array=numpy.array(test_cos)
+    print("the test_cos_array is ",test_cos_array.shape)
     
     for each in test_cos:
         for i in range(k):
@@ -336,17 +367,22 @@ def KNN(VSMlist,lablelist,k):
             each.pop(p)
     klist.append(kl)
     
+    print(klist[0])
+    print(len(klist[1]))
+    
     for each in klist:
         for k in each:
             cl.append(Y_train[k])
         tcdict=dict(Counter(cl).most_common(1))
-        test_list.append(tcdict.keys())
+        t_list.append(list(tcdict.keys()))
+        test_list=list(_flatten(t_list))
 
     print(test_list)
     print(len(test_list))
     print('**********测试**********')
-    print(Y_test)
+    #print(Y_test)
     print(len(Y_test))
+    print("***************************KNN*****************************")
     return test_list,Y_test
 
 def computeacc(test_list,Y_test):
@@ -360,8 +396,65 @@ def computeacc(test_list,Y_test):
     acc=i/n
     print('The KNN result is %f'%acc )   
     
+    
+def cos11(X_train, X_test):#计算cos值????????
+    testdoc_cos=[]
+    test_cos=[]
+    len_test=0.0
+    len_train=0.0
+    num=0.0
+    
+    for i in X_test[0]:
+        len_test+=i**2
+        #print('len_test是%f'%len_test)
+    for vector_train in X_train:
+        for j in vector_train:
+            len_train+=j**2
+        #print('len_train是%f'%len_train)                
+        num=numpy.dot(X_test[0], vector_train)
+        if len_test and len_train !=0:
+            cos=num/((len_test*len_train)**0.5)
+        else:
+            cos=0
+        
+        testdoc_cos.append(cos)
+        print(testdoc_cos)
+        test_cos.append(testdoc_cos)
+        testdoc_cos=[]
+    
+    
+    return test_cos#返回一个二维的列表，每一行表示test中一篇doc和train中各篇doc的cos值    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 #####################################main#################################### 
    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
 mainpath="C:\\Users\\311\\Desktop\\data mining\\20news-18828" 
 fp_list=getpath(mainpath)[0]
@@ -370,13 +463,19 @@ lablelist=getpath(mainpath)[1]
 filelist=readfile(fp_list)
 nor_wordlist=preprocess(filelist)
 frequencydict=wordfrequency(nor_wordlist,16,1500) 
-c=len(frequencydict)
-print("词典数量%d"%c)
+
 VSMlist=VSM(nor_wordlist,frequencydict)
-k=3
-knn=KNN(VSMlist,lablelist,k)
+#acclist=[]
+#for i in range(5):
+knn=KNN(VSMlist,lablelist,3)
 test_list=knn[0]
 Y_test=knn[1]
 computeacc(test_list,Y_test)
+#acclist.append(computeacc(test_list,Y_test))
+#print(acclist)
        
+
+
+
+
    
